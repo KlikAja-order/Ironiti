@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRONITI · Private Lineage</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root { --gold: #C5A059; --dark: #050505; --card: #0F0F0F; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--dark); color: #F5F5F5; letter-spacing: -0.01em; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .gold-gradient { background: linear-gradient(135deg, #F5E3B5 0%, #C5A059 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .luxury-card { background: var(--card); border: 1px solid rgba(197, 160, 89, 0.15); border-radius: 1rem; }
+        
+        /* Tree UI */
+        .tree-container { position: relative; padding-left: 2rem; }
+        .tree-item { position: relative; padding-left: 1.5rem; border-left: 1px solid rgba(197, 160, 89, 0.1); }
+        .tree-item::before { content: ""; position: absolute; left: 0; top: 2.2rem; width: 1rem; height: 1px; background: var(--gold); }
+        .member-node { background: linear-gradient(145deg, #161616, #0A0A0A); border-left: 3px solid var(--gold); transition: 0.3s; }
+        .member-node:hover { transform: translateX(5px); border-color: #fff; }
+
+        .btn-gold { background: var(--gold); color: var(--dark); font-weight: 600; transition: 0.3s; }
+        input, select { background: #111 !important; border: 1px solid #222 !important; color: #fff !important; outline: none; }
+        input:focus { border-color: var(--gold) !important; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black z-[100] flex items-center justify-center">
+        <div class="text-center">
+            <h2 class="font-serif text-3xl gold-gradient animate-pulse">IRONITI</h2>
+            <p class="text-[10px] text-white/20 tracking-widest mt-2">SECURE CONNECTION...</p>
+        </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        <aside class="lg:w-72 lg:h-screen lg:fixed lg:left-0 bg-black border-r border-white/5 flex flex-col p-8 z-40">
+            <div class="mb-12">
+                <h1 class="font-serif text-2xl gold-gradient">👑 IRONITI</h1>
+                <p class="text-[10px] uppercase tracking-[0.3em] text-white/30 mt-1">SILSILAH KELUARGA</p>
+            </div>
+            <nav class="space-y-6 flex-1 text-sm">
+                <button onclick="location.reload()" class="flex items-center gap-4 text-white hover:text-gold w-full group text-left">
+                    <span class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold"><i class="fas fa-home text-[10px]"></i></span>
+                    Beranda
+                </button>
+                <button onclick="exportToPDF()" class="flex items-center gap-4 text-white hover:text-gold w-full group text-left">
+                    <span class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold"><i class="fas fa-file-pdf text-[10px]"></i></span>
+                    Cetak PDF
+                </button>
+                <button onclick="toggleModal('configModal')" class="flex items-center gap-4 text-white hover:text-gold w-full group text-left">
+                    <span class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-gold"><i class="fas fa-lock text-[10px]"></i></span>
+                    Master Access
+                </button>
+            </nav>
+        </aside>
+
+        <main class="flex-1 lg:ml-72 p-6 lg:p-16">
+            <header class="mb-12">
+                <h2 class="font-serif text-5xl italic gold-gradient">Trah Ironiti</h2>
+                <div class="h-1 w-20 bg-gold mt-4"></div>
+            </header>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-10">
+                <div class="xl:col-span-4">
+                    <div class="luxury-card p-8 shadow-2xl">
+                        <h3 class="font-serif text-xl mb-6">Tambah Anggota</h3>
+                        <div class="space-y-5">
+                            <div>
+                                <label class="text-[10px] uppercase tracking-widest text-white/40 block mb-2">Nama Lengkap</label>
+                                <input type="text" id="inputName" class="w-full p-3 rounded-lg text-sm" placeholder="Contoh: Budi Ironiti">
+                            </div>
+                            <div>
+                                <label class="text-[10px] uppercase tracking-widest text-white/40 block mb-2">Anak Dari</label>
+                                <select id="parentSelect" class="w-full p-3 rounded-lg text-sm"></select>
+                            </div>
+                            <button onclick="addMember()" id="btnSave" class="w-full btn-gold py-3 rounded-lg text-xs uppercase tracking-widest shadow-lg">Simpan Silsilah</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="xl:col-span-8">
+                    <div class="luxury-card min-h-[500px] overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-white/5 bg-white/[0.01] flex justify-between items-center">
+                            <span class="text-[10px] uppercase text-white/40 tracking-widest">Visualisasi Pohon</span>
+                            <span id="syncStatus" class="text-[9px] text-green-500 uppercase tracking-tighter"><i class="fas fa-check-circle"></i> Terhubung</span>
+                        </div>
+                        <div class="p-8 overflow-auto bg-[#080808]" id="treeViewport">
+                            <div id="treeCanvas" class="inline-block p-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="configModal" class="hidden fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="max-w-xs w-full text-center">
+            <h3 class="font-serif text-2xl mb-6 gold-gradient uppercase">Verification</h3>
+            <input type="password" id="adminPin" placeholder="Enter PIN" class="w-full p-4 text-center text-xl border-b border-gold !bg-transparent rounded-none focus:outline-none mb-8">
+            <div class="flex gap-4">
+                <button onclick="toggleModal('configModal')" class="flex-1 py-2 text-xs uppercase text-white/40">Tutup</button>
+                <button onclick="verifyAdmin()" class="flex-1 btn-gold py-2 rounded text-xs uppercase">Buka Akses</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8tZaWFsoGl0fvEShnNeJSMD7ruHXya1Q",
+            authDomain: "trah-ironiti.firebaseapp.com",
+            databaseURL: "https://trah-ironiti-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "trah-ironiti",
+            storageBucket: "trah-ironiti.firebasestorage.app",
+            messagingSenderId: "743467663527",
+            appId: "1:743467663527:web:29fd3b09828c85563b1b82"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+        const rootRef = db.ref('ironiti_tree');
+        
+        let rawData = [];
+        let isAdmin = false;
+
+        // SISTEM KEAMANAN OTOMATIS
+        function loginSecurely() {
+            auth.signInAnonymously()
+                .then(() => {
+                    console.log("Secure Connection Established.");
+                    initData();
+                })
+                .catch((err) => {
+                    console.error("Auth Error:", err.message);
+                    alert("Gagal terhubung secara aman ke database.");
+                });
+        }
+
+        function initData() {
+            rootRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    autoSeedAkar();
+                } else {
+                    rawData = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                    const rootNode = rawData.find(item => item.parent === "ROOT");
+                    if (rootNode) {
+                        renderTree(buildNested(rootNode.name));
+                        populateSelect();
+                    }
+                }
+                document.getElementById('loadingOverlay').style.display = 'none';
+            });
+        }
+
+        async function autoSeedAkar() {
+            try {
+                await rootRef.push({ name: "Kyai Ironiti & Nyai Ironiti", parent: "ROOT", gen: 1 });
+            } catch (e) { console.error(e); }
+        }
+
+        function buildNested(name) {
+            const node = rawData.find(item => item.name === name);
+            if (!node) return null;
+            const children = rawData.filter(item => item.parent === name).map(child => buildNested(child.name)).filter(c => c !== null);
+            return { ...node, children };
+        }
+
+        function renderTree(tree) {
+            const canvas = document.getElementById('treeCanvas');
+            canvas.innerHTML = `<div class="tree-container">${createNodeHTML(tree, true)}</div>`;
+        }
+
+        function createNodeHTML(node, isRoot = false) {
+            let html = `
+                <div class="tree-item mb-6">
+                    <div class="member-node relative z-10 inline-flex items-center gap-4 p-4 rounded-xl min-w-[260px] luxury-card shadow-lg">
+                        <div class="w-10 h-10 flex items-center justify-center ${isRoot ? 'text-gold' : 'text-white/20'}">
+                            <i class="fas ${isRoot ? 'fa-crown' : 'fa-user'} text-sm"></i>
+                        </div>
+                        <div class="text-left flex-1 overflow-hidden">
+                            <p class="text-[7px] uppercase tracking-widest text-gold/60">Gen ${node.gen}</p>
+                            <h4 class="font-serif text-sm truncate">${node.name}</h4>
+                        </div>
+                        ${isAdmin && !isRoot ? `<button onclick="deleteMember('${node.id}')" class="text-white/10 hover:text-red-500 p-2"><i class="fas fa-times"></i></button>` : ''}
+                    </div>`;
+            if (node.children && node.children.length > 0) {
+                html += `<div class="tree-container mt-4">${node.children.map(child => createNodeHTML(child)).join('')}</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function populateSelect() {
+            const select = document.getElementById('parentSelect');
+            const sorted = [...rawData].sort((a,b) => a.name.localeCompare(b.name));
+            select.innerHTML = `<option value="" disabled selected>— Pilih Orang Tua —</option>` + sorted.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+        }
+
+        async function addMember() {
+            const nameField = document.getElementById('inputName');
+            const name = nameField.value.trim();
+            const parent = document.getElementById('parentSelect').value;
+            
+            if(!name || !parent) return alert("Mohon isi Nama dan Orang Tua.");
+            
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerText = "MENYIMPAN...";
+
+            try {
+                const parentObj = rawData.find(m => m.name === parent);
+                await rootRef.push({ name: name, parent: parent, gen: parseInt(parentObj.gen) + 1 });
+                nameField.value = "";
+            } catch (e) {
+                alert("Gagal Simpan: Pastikan Rules Firebase sudah diubah.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "SIMPAN SILSILAH";
+            }
+        }
+
+        async function exportToPDF() {
+            const tree = document.getElementById('treeCanvas');
+            const canvas = await html2canvas(tree, { backgroundColor: "#050505", scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF({ orientation: canvas.width > canvas.height ? 'l' : 'p', unit: 'px', format: [canvas.width, canvas.height] });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save("Ironiti_Legacy.pdf");
+        }
+
+        function deleteMember(id) { if(confirm("Hapus data ini?")) db.ref('ironiti_tree/' + id).remove(); }
+        function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+        function verifyAdmin() { if(document.getElementById('adminPin').value === "8080") { isAdmin = true; toggleModal('configModal'); initData(); } else { alert("PIN Salah"); } }
+
+        // START SECURELY
+        loginSecurely();
+    </script>
+</body>
+</html>
